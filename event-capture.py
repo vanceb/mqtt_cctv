@@ -47,7 +47,7 @@ def docker_mqtt():
         global MQTT_HOST
         global MQTT_PORT
         MQTT_HOST = DOCKER_MQTT_ADDR
-        MQTT_PORT = DOCKER_MQTT_PORT
+        MQTT_PORT = int(DOCKER_MQTT_PORT)
     else:
         logging.info("Using defaul mqtt server")
 
