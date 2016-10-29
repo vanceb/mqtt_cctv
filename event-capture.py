@@ -6,7 +6,6 @@ import json
 import os
 import shutil
 import datetime
-import time
 import urllib
 from queue import Queue
 from threading import Thread
@@ -36,6 +35,21 @@ def setup_logging(default_path='logging.json', default_level=logging.INFO, env_k
         logging.basicConfig(level=default_level)
         logging.info("Configured logging basic")
 
+def docker_mqtt():
+    # Settings for MQTT Server
+    DOCKER_MQTT_ADDR = os.environ.get('MOSQUITTO_PORT_1883_TCP_ADDR', None)
+    DOCKER_MQTT_PORT = os.environ.get('MOSQUITTO_PORT_1883_TCP_PORT', None)
+
+    if DOCKER_MQTT_PORT is not None and DOCKER_MQTT_ADDR is not None:
+        logging.info("Using linked Docker mqtt: " + DOCKER_MQTT_ADDR + ":" + str(DOCKER_MQTT_PORT))
+        # We are running in a Linked Docker environment
+        # Use Docker Linked Container environment variables for setup
+        global MQTT_HOST
+        global MQTT_PORT
+        MQTT_HOST = DOCKER_MQTT_ADDR
+        MQTT_PORT = DOCKER_MQTT_PORT
+    else:
+        logging.info("Using defaul mqtt server")
 
 def on_connect(client, userdata, rc):
     logging.info("Connected to mqtt")
@@ -44,7 +58,7 @@ def on_connect(client, userdata, rc):
 
 
 def on_message(client, userdata, msg):
-    cctvlogger = logging.getlogger('cctv')
+    cctvlogger = logging.getLogger('cctv')
     cctvlogger.debug('MQTT message received: ' + str(msg.payload))
     # Parse the message as json
     json_msg = json.loads(msg.payload.decode("utf-8"))
@@ -52,15 +66,19 @@ def on_message(client, userdata, msg):
 
 
 def mqtt_listner(out_q):
+    cctvlogger = logging.getLogger('cctv')
+    cctvlogger.info("MQTT listener started")
     client = mqtt.Client(userdata = out_q)
     client.on_connect = on_connect
     client.on_message = on_message
+    cctvlogger.info("Connecting to mqtt server using: " + MQTT_HOST + ":" + str(MQTT_PORT))
     client.connect(MQTT_HOST, MQTT_PORT, 60)
     client.loop_forever()
+    cctvlogger.error("mqtt_listener stopped")
 
 
 def frame_grabber(in_q, out_q, frameURL):
-    cctvlogger = logging.getlogger('cctv')
+    cctvlogger = logging.getLogger('cctv')
     cctvlogger.info("Frame Grabber started: " + frameURL)
     event_dir = None
     event_seq = 0
@@ -76,8 +94,7 @@ def frame_grabber(in_q, out_q, frameURL):
             # We got a message so start a new event
             now = datetime.datetime.now()
             cctvlogger.info("Frame Grabber, got Message: " + str(msg))
-            last_event_time = datetime.datetime.fromtimestamp(time.mktime(time.strptime(msg["logtime"], "%Y-%m-%dT%H:%M:%S.%f")))
-            end_grab = last_event_time + datetime.timedelta(seconds=GRAB_FOR_SECS)
+            end_grab = now + datetime.timedelta(seconds=GRAB_FOR_SECS)
             cctvlogger.info("End of event: " + str(end_grab))
             grabbing = True
             next_grab = now
@@ -91,8 +108,7 @@ def frame_grabber(in_q, out_q, frameURL):
                 # We are already handling an event so extend the event time
                 msg = in_q.get()
                 cctvlogger.debug("Frame Grabber, got Message: " + str(msg))
-                last_event_time = datetime.datetime.fromtimestamp(time.mktime(time.strptime(msg["logtime"], "%Y-%m-%dT%H:%M:%S.%f")))
-                end_grab = last_event_time + datetime.timedelta(seconds=GRAB_FOR_SECS)
+                end_grab = now + datetime.timedelta(seconds=GRAB_FOR_SECS)
                 cctvlogger.info("End of event extended: " + str(end_grab))
 
         # Should we grab the next frame?
@@ -105,7 +121,7 @@ def frame_grabber(in_q, out_q, frameURL):
 
         # Check to see whether we should end the event
         if grabbing == True and now > end_grab:
-            cctvlogger.info("End of event capture")
+            cctvlogger.info("End of event capture...")
             # Finished grabbing the event
             # Signal to make video thread to do its stuff
             out_q.put(event_dir)
@@ -116,7 +132,8 @@ def frame_grabber(in_q, out_q, frameURL):
 
 
 def make_video(in_q):
-    cctvlogger = logging.getlogger('cctv')
+    cctvlogger = logging.getLogger('cctv')
+    cctvlogger.info("Video processor started")
     while True:
         # Block waiting for an incoming message
         msg = in_q.get()
@@ -146,11 +163,12 @@ def make_video(in_q):
             cctvlogger.debug("Encoded json: " + json_event)
             json_event = json_event.encode('ascii')
             with urllib.request.urlopen(maker_url, json_event) as f:
-                print(f.read().decode('utf-8'))
+                cctvlogger.debug(f.read().decode('utf-8'))
 
 
 if __name__ == "__main__":
     setup_logging()
+    docker_mqtt()
     q1 = Queue()
     q2 = Queue()
     t1 = Thread(target=frame_grabber, args=(q1,q2, IMAGE_URL,))

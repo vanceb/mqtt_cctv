@@ -1,7 +1,7 @@
-FROM python:2-onbuild
+FROM python:3-onbuild
 
 # Update image and get avconv package
-RUN apt-get update && apt-get -y install avconv
+RUN apt-get update && apt-get -y install libav-tools
 
 # Run our python script in the container
 CMD [ "python", "./event-capture.py"]

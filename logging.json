@@ -22,7 +22,7 @@
         "class": "logging.handlers.TimedRotatingFileHandler",
         "level": "WARNING",
         "formatter": "application_log_formatter",
-        "filename": "logs/datalogger.log",
+        "filename": "application.log",
         "when": "D",
         "interval": 1,
         "backupCount": 0,
@@ -34,7 +34,7 @@
         "class": "logging.handlers.TimedRotatingFileHandler",
         "level": "INFO",
         "formatter": "data_log_formatter",
-        "filename": "logs/mqtt_cctv.log",
+        "filename": "mqtt_cctv.log",
         "when": "D",
         "interval": 1,
         "backupCount": 0,
@@ -46,8 +46,7 @@
 "loggers": {
     "cctv": {
         "level": "INFO",
-        "handlers": ["cctv_handler"],
-        "propagate": false
+        "handlers": ["cctv_handler"]
     }
 },
 
