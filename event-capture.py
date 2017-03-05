@@ -86,6 +86,7 @@ def frame_grabber(in_q, out_q, frameURL):
     next_grab = datetime.datetime.now()
     end_grab = next_grab
     frame_interval = datetime.timedelta(seconds=1/FPS)
+    #latest = EVENTDIR + "/latest"
     while True:
         if not grabbing:
             # Block waiting for an incoming message
@@ -99,6 +100,7 @@ def frame_grabber(in_q, out_q, frameURL):
             grabbing = True
             next_grab = now
             dt = msg["logtime"].split('T')
+            #dt = dt[0].split('-').append(dt[1])
             event_dir =  EVENT_DIR + '/' + '/'.join(dt)
             os.makedirs(event_dir, exist_ok=True)
         else:
@@ -123,6 +125,9 @@ def frame_grabber(in_q, out_q, frameURL):
         if grabbing == True and now > end_grab:
             cctvlogger.info("End of event capture...")
             # Finished grabbing the event
+            # Link to the latest event from the top level
+            #os.remove(latest)
+            #os.symlink(event_dir, latest)
             # Signal to make video thread to do its stuff
             out_q.put(event_dir)
             # Reset
