@@ -14,12 +14,14 @@ sudo docker build -t vanceb/mqtt_cctv .
 Run
 ===
 
+~~~ shell
 sudo docker run -d \
          --restart=always \
          --name mqtt_cctv \
          --volume /cctv/events:/cctv/events \
          --link mosquitto:mosquitto \
          vanceb/mqtt_cctv
+~~~
 
  Needs
  =====
