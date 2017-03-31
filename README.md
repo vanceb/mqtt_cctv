@@ -18,7 +18,7 @@ Run
 sudo docker run -d \
          --restart=always \
          --name mqtt_cctv \
-         --volume /cctv/events:/cctv/events \
+         --volume /data/cctv/events:/cctv/events \
          --link mosquitto:mosquitto \
          vanceb/mqtt_cctv
 ~~~
