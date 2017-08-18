@@ -176,9 +176,9 @@ def make_video(in_q):
 
             # Symlinks need to be relative because of Docker
             path_parts = vidfile.split("/")
-            os.symlink("/".join(path_parts[2:]), latest)
+            os.symlink("/".join(path_parts[3:]), latest)
             path_parts = newpath.split("/")
-            os.symlink("/".join(path_parts[2:]), today)
+            os.symlink("/".join(path_parts[3:]), today)
 
             # Notify event to IFTTT Maker channel
             if MAKER_URL is not None:
