@@ -89,7 +89,6 @@ def frame_grabber(in_q, out_q, frameURL):
     next_grab = datetime.datetime.now()
     end_grab = next_grab
     frame_interval = datetime.timedelta(seconds=1/FPS)
-    latest = EVENT_DIR + "/latest"
     while True:
         if not grabbing:
             # Block waiting for an incoming message
@@ -103,7 +102,10 @@ def frame_grabber(in_q, out_q, frameURL):
             grabbing = True
             next_grab = now
             dt = msg["logtime"].split('T')
-            d = dt[0].split('-').append(dt[1])
+            cctvlogger.info("DateTime: " + str(dt))
+            d = dt[0].split('-')
+            cctvlogger.info("Date split: " + str(d))
+            d.append(dt[1])
             event_dir = EVENT_DIR + '/' + '/'.join(d)
             os.makedirs(event_dir, exist_ok=True)
         else:
@@ -128,9 +130,6 @@ def frame_grabber(in_q, out_q, frameURL):
         if grabbing is True and now > end_grab:
             cctvlogger.info("End of event capture...")
             # Finished grabbing the event
-            # Link to the latest event from the top level
-            os.remove(latest)
-            os.symlink(event_dir, latest)
             # Signal to make video thread to do its stuff
             out_q.put(event_dir)
             # Reset
@@ -159,10 +158,16 @@ def make_video(in_q):
             os.rename(msg + "/event.mp4", vidfile)
             shutil.rmtree(msg, ignore_errors=True)
 
-            #files = glob.glob(msg + "/*.jpg")
-            #print("Removing: " + str(files))
-            #for file in files:
-            #    os.remove(file)
+            # Update symlinks
+            latest = EVENT_DIR + "/latest"
+            today = EVENT_DIR + "/today"
+            try:
+                os.remove(latest)
+                os.remove(today)
+            except OSError:
+                pass
+            os.symlink(vidfile, latest)
+            os.symlink(newpath, today)
 
             # Notify event to IFTTT Maker channel
             if MAKER_URL is not None:
