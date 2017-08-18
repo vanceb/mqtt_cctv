@@ -19,6 +19,9 @@ GRAB_FOR_SECS = 30
 FPS = 1
 VIDEO_CONVERT = ["avconv", "-r", "1", "-i", "%4d.jpg", "event.mp4"]
 
+MAKER_URL = None
+#MAKER_URL = "https://maker.ifttt.com/trigger/gate/with/key/bjS1EJTq2pcD3cCXnhZgi_"
+
 
 # Load logging config from logging.json
 def setup_logging(default_path='logging.json', default_level=logging.INFO, env_key='LOG_CFG'):
@@ -86,7 +89,7 @@ def frame_grabber(in_q, out_q, frameURL):
     next_grab = datetime.datetime.now()
     end_grab = next_grab
     frame_interval = datetime.timedelta(seconds=1/FPS)
-    #latest = EVENTDIR + "/latest"
+    latest = EVENT_DIR + "/latest"
     while True:
         if not grabbing:
             # Block waiting for an incoming message
@@ -100,8 +103,8 @@ def frame_grabber(in_q, out_q, frameURL):
             grabbing = True
             next_grab = now
             dt = msg["logtime"].split('T')
-            #dt = dt[0].split('-').append(dt[1])
-            event_dir =  EVENT_DIR + '/' + '/'.join(dt)
+            d = dt[0].split('-').append(dt[1])
+            event_dir = EVENT_DIR + '/' + '/'.join(d)
             os.makedirs(event_dir, exist_ok=True)
         else:
             now = datetime.datetime.now()
@@ -122,12 +125,12 @@ def frame_grabber(in_q, out_q, frameURL):
             event_seq += 1
 
         # Check to see whether we should end the event
-        if grabbing == True and now > end_grab:
+        if grabbing is True and now > end_grab:
             cctvlogger.info("End of event capture...")
             # Finished grabbing the event
             # Link to the latest event from the top level
-            #os.remove(latest)
-            #os.symlink(event_dir, latest)
+            os.remove(latest)
+            os.symlink(event_dir, latest)
             # Signal to make video thread to do its stuff
             out_q.put(event_dir)
             # Reset
@@ -154,7 +157,7 @@ def make_video(in_q):
             vidurl = "https://geo-fun.org/events/" + pp[-2] + "/" + pp[-1].split('.')[0] + ".mp4"
             cctvlogger.info("Moving video event file to " + vidfile)
             os.rename(msg + "/event.mp4", vidfile)
-            shutil.rmtree(msg)
+            shutil.rmtree(msg, ignore_errors=True)
 
             #files = glob.glob(msg + "/*.jpg")
             #print("Removing: " + str(files))
@@ -162,13 +165,13 @@ def make_video(in_q):
             #    os.remove(file)
 
             # Notify event to IFTTT Maker channel
-            maker_url = "https://maker.ifttt.com/trigger/gate/with/key/bjS1EJTq2pcD3cCXnhZgi_"
-            cctvlogger.debug("URL: " + vidurl)
-            json_event = urllib.parse.urlencode({"value1": vidurl })
-            cctvlogger.debug("Encoded json: " + json_event)
-            json_event = json_event.encode('ascii')
-            with urllib.request.urlopen(maker_url, json_event) as f:
-                cctvlogger.debug(f.read().decode('utf-8'))
+            if MAKER_URL is not None:
+                cctvlogger.debug("URL: " + vidurl)
+                json_event = urllib.parse.urlencode({"value1": vidurl })
+                cctvlogger.debug("Encoded json: " + json_event)
+                json_event = json_event.encode('ascii')
+                with urllib.request.urlopen(MAKER_URL, json_event) as f:
+                    cctvlogger.debug(f.read().decode('utf-8'))
 
 
 if __name__ == "__main__":
@@ -182,4 +185,3 @@ if __name__ == "__main__":
     t1.start()
     t2.start()
     t3.start()
-
