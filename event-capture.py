@@ -24,7 +24,9 @@ MAKER_URL = None
 
 
 # Load logging config from logging.json
-def setup_logging(default_path='logging.json', default_level=logging.INFO, env_key='LOG_CFG'):
+def setup_logging(default_path='logging.json',
+                  default_level=logging.INFO,
+                  env_key='LOG_CFG'):
     path = default_path
     value = os.getenv(env_key, None)
     if value:
@@ -38,13 +40,15 @@ def setup_logging(default_path='logging.json', default_level=logging.INFO, env_k
         logging.basicConfig(level=default_level)
         logging.info("Configured logging basic")
 
+
 def docker_mqtt():
     # Settings for MQTT Server
     DOCKER_MQTT_ADDR = os.environ.get('MOSQUITTO_PORT_1883_TCP_ADDR', None)
     DOCKER_MQTT_PORT = os.environ.get('MOSQUITTO_PORT_1883_TCP_PORT', None)
 
     if DOCKER_MQTT_PORT is not None and DOCKER_MQTT_ADDR is not None:
-        logging.info("Using linked Docker mqtt: " + DOCKER_MQTT_ADDR + ":" + str(DOCKER_MQTT_PORT))
+        logging.info("Using linked Docker mqtt: "
+                     + DOCKER_MQTT_ADDR + ":" + str(DOCKER_MQTT_PORT))
         # We are running in a Linked Docker environment
         # Use Docker Linked Container environment variables for setup
         global MQTT_HOST
@@ -53,6 +57,7 @@ def docker_mqtt():
         MQTT_PORT = int(DOCKER_MQTT_PORT)
     else:
         logging.info("Using defaul mqtt server")
+
 
 def on_connect(client, userdata, rc):
     logging.info("Connected to mqtt")
@@ -71,10 +76,11 @@ def on_message(client, userdata, msg):
 def mqtt_listner(out_q):
     cctvlogger = logging.getLogger('cctv')
     cctvlogger.info("MQTT listener started")
-    client = mqtt.Client(userdata = out_q)
+    client = mqtt.Client(userdata=out_q)
     client.on_connect = on_connect
     client.on_message = on_message
-    cctvlogger.info("Connecting to mqtt server using: " + MQTT_HOST + ":" + str(MQTT_PORT))
+    cctvlogger.info("Connecting to mqtt server using: "
+                    + MQTT_HOST + ":" + str(MQTT_PORT))
     client.connect(MQTT_HOST, MQTT_PORT, 60)
     client.loop_forever()
     cctvlogger.error("mqtt_listener stopped")
@@ -149,11 +155,12 @@ def make_video(in_q):
         # Convert video
         result = call(VIDEO_CONVERT, cwd=msg)
         if result == 0:
-            # The conversion was successful so move the video and remove the jpgs
+            # Conversion was successful so move the video and remove the jpgs
             pp = str(msg).split('/')
             newpath = '/'.join(pp[:-1])
             vidfile = newpath + '/' + pp[-1].split('.')[0] + ".mp4"
-            vidurl = "https://geo-fun.org/events/" + pp[-2] + "/" + pp[-1].split('.')[0] + ".mp4"
+            vidurl = "https://geo-fun.org/events/" \
+                     + pp[-2] + "/" + pp[-1].split('.')[0] + ".mp4"
             cctvlogger.info("Moving video event file to " + vidfile)
             os.rename(msg + "/event.mp4", vidfile)
             shutil.rmtree(msg, ignore_errors=True)
@@ -172,7 +179,7 @@ def make_video(in_q):
             # Notify event to IFTTT Maker channel
             if MAKER_URL is not None:
                 cctvlogger.debug("URL: " + vidurl)
-                json_event = urllib.parse.urlencode({"value1": vidurl })
+                json_event = urllib.parse.urlencode({"value1": vidurl})
                 cctvlogger.debug("Encoded json: " + json_event)
                 json_event = json_event.encode('ascii')
                 with urllib.request.urlopen(MAKER_URL, json_event) as f:
@@ -184,7 +191,7 @@ if __name__ == "__main__":
     docker_mqtt()
     q1 = Queue()
     q2 = Queue()
-    t1 = Thread(target=frame_grabber, args=(q1,q2, IMAGE_URL,))
+    t1 = Thread(target=frame_grabber, args=(q1, q2, IMAGE_URL,))
     t2 = Thread(target=mqtt_listner, args=(q1,))
     t3 = Thread(target=make_video, args=(q2,))
     t1.start()
