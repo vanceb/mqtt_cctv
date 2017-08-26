@@ -1,3 +1,5 @@
+# Merged into broader cctv project - no more updates here
+
 mqtt_cctv
 =========
 
