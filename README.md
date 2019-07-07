@@ -1,3 +1,6 @@
+# Project Archived
+This code has been integrated into a broader home automation project on gitlab [https://gitlab.com/vanceb/home_automation](https://gitlab.com/vanceb/home_automation)
+
 # Merged into broader cctv project - no more updates here
 
 mqtt_cctv
